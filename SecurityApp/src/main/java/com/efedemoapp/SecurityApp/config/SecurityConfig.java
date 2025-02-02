@@ -12,11 +12,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -29,29 +30,45 @@ public class SecurityConfig {
 
         return http
 
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
 
-                .authorizeHttpRequests(authorize -> authorize
-                        // İsteğe göre izin verilecek endpointler
+                .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/signup", "/login", "/login.html").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/books/**").hasRole("USER")
                         .anyRequest().authenticated()
                 )
 
 
                 .userDetailsService(userDetailsService)
 
-
+                // Basic Authentication (REST API için)
                 .httpBasic(Customizer.withDefaults())
 
-                .formLogin(AbstractHttpConfigurer::disable)
 
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .defaultSuccessUrl("/home", true)
+                        .permitAll()
+                )
+
+
+                .sessionManagement(session -> session
+                        .sessionFixation().migrateSession()
+                        .invalidSessionUrl("/login?expired")
+                        .maximumSessions(1)
+                        .maxSessionsPreventsLogin(false)
+                )
+
+                // Logout İşlemi
                 .logout(logout -> logout
-                        .logoutUrl("/logout")
+                        .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                         .logoutSuccessUrl("/login?logout")
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
                         .deleteCookies("JSESSIONID")
                 )
+
                 .build();
     }
 

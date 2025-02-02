@@ -34,6 +34,9 @@ public class UserService {
         return "User created";
 
     }
+    public boolean isValidPassword(String password) {
+        return password.matches("^(?=.[0-9])(?=.[a-z])(?=.[A-Z])(?=.[@#$%^&+=!]).{8,}$");
+    }
 
     public User getAuthenticatedUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -50,5 +53,9 @@ public class UserService {
         User user = userRepository.findByUserName(username)
                 .orElseThrow(() -> new UserServiceException(ExceptionMessages.USER_NOT_FOUND.getMessage()));
         return passwordEncoder.matches(password, user.getPassword());
+    }
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
     }
 }
